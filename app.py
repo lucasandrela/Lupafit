@@ -46,17 +46,21 @@ def login():
     
     return jsonify({"error": "Credenciais inválidas."}), 401
 
+# Na rota /catraca/validar, altere a busca para:
 @app.route('/catraca/validar', methods=['POST'])
 def validar_acesso():
     dados = request.get_json()
-    cpf_inserido = dados.get("cpf")
+    cpf_bruto = dados.get("cpf", "")
+    # Garante que estamos tratando apenas números
+    cpf_inserido = "".join(filter(str.isdigit, str(cpf_bruto)))
 
     if not cpf_inserido:
         return jsonify({"error": "CPF é obrigatório."}), 400
 
+    # Busca no Firestore
     docs = db.collection('usuarios_catraca').where("cpf", "==", cpf_inserido).limit(1).get()
     
-    if not docs:
+    if len(docs) == 0: # Forma mais segura de verificar se existe
         return jsonify({"status": "negado", "mensagem": "CPF não cadastrado"}), 404
 
     usuario = docs[0].to_dict()
