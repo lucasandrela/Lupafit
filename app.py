@@ -31,7 +31,38 @@ db = firestore.client()
 def root():
     return jsonify({"api": "API Catraca Academia", "version": "1.0", "author": "Lucas Assis"}), 200
 
+@app.route('/excluir_usuario/<usuario_id>', methods=['DELETE'])
+@token_obrigatorio
+def excluir_usuario(usuario_id):
+    try:
+        usuario_ref = db.collection('usuarios_catraca').document(usuario_id)
+        if not usuario_ref.get().exists:
+            return jsonify({"error": "Usuário não encontrado."}), 404
+
+        usuario_ref.delete()
+        return jsonify({"message": "Usuário excluído com sucesso!."}), 200
+    except Exception as e:
+        return jsonify({"error": "Falha na exclusão."}), 400
+
+@app.route('/editar_usuario/<usuario_id>', methods=['PUT'])
+@token_obrigatorio
+def editar_usuario(usuario_id):
+    dados = request.get_json()
+    if not dados:
+        return jsonify({"error": "Dados de atualização ausentes."}), 400
+    
+    try:
+        usuario_ref = db.collection('usuarios_catraca').document(usuario_id)
+        if not usuario_ref.get().exists:
+            return jsonify({"error": "Usuário não encontrado."}), 404
+        
+        usuario_ref.update(dados)
+        return jsonify({"message": "Usuário atualizado com sucesso!."}), 200
+    except Exception as e:
+        return jsonify({"error": "Falha na atualização."}), 400
+
 @app.route('/usuarios', methods=['GET'])
+@token_obrigatorio
 def listar_usuarios():
     try:
         usuarios_ref = db.collection('usuarios_catraca')
