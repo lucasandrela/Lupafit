@@ -31,6 +31,20 @@ db = firestore.client()
 def root():
     return jsonify({"api": "API Catraca Academia", "version": "1.0", "author": "Lucas Assis"}), 200
 
+@app.route('/usuarios', methods=['GET'])
+def listar_usuarios():
+    try:
+        usuarios_ref = db.collection('usuarios_catraca')
+        docs = usuarios_ref.stream()
+        usuarios = []
+        for doc in docs:
+            usuario = doc.to_dict()
+            usuario["id"] = doc.id
+            usuarios.append(usuario)
+        return jsonify(usuarios), 200
+    except Exception as e:
+        return jsonify({"error": "Falha ao listar usuários."}), 500
+
 @app.route('/login', methods=['POST'])
 def login():
     dados = request.get_json()
@@ -45,6 +59,8 @@ def login():
         return jsonify({"message": "Login bem-sucedido.", "token": token}), 200
     
     return jsonify({"error": "Credenciais inválidas."}), 401
+
+
 
 # Na rota /catraca/validar, altere a busca para:
 @app.route('/catraca/validar', methods=['POST'])
@@ -78,6 +94,7 @@ def validar_acesso():
             "mensagem": "Procure a secretaria da academia"
         }), 403
 
+
 @app.route("/usuarios", methods=["POST"])
 @token_obrigatorio
 def post_usuario():
@@ -94,6 +111,8 @@ def post_usuario():
         return jsonify({"message": "Usuário cadastrado com sucesso!."}), 201
     except Exception as e:
         return jsonify({"error": "Falha no cadastro."}), 400
+
+
 
 @app.errorhandler(404)
 def not_found(error):
