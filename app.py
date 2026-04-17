@@ -126,7 +126,7 @@ def validar_acesso():
         }), 403
 
 
-@app.route("/usuarios", methods=["POST"])
+@app.route("/catraca", methods=["POST"])
 @token_obrigatorio
 def post_usuario():
     dados = request.get_json()
