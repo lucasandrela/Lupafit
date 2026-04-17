@@ -46,7 +46,7 @@ def login():
 
     return jsonify({"error": "Credenciais inválidas."}), 401
 
-@app.route('/catraca/validar', methods=['GET'])
+@app.route('/catraca/validar', methods=['POST'])
 def validar_acesso():
     dados = request.get_json()
     cpf_bruto = dados.get("cpf", "")
