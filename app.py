@@ -29,7 +29,7 @@ db = firestore.client()
 
 @app.route('/', methods=['GET'])
 def root():
-    return jsonify({"api": "API Catraca Academia", "version": "1.0", "author": "Lucas Assis"}), 200
+    return jsonify({"api": "API Catraca Academia", "version": "1.1", "author": "Lucas Assis"}), 200
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -46,23 +46,19 @@ def login():
 
     return jsonify({"error": "Credenciais inválidas."}), 401
 
-# Na rota /catraca/validar, altere a busca para:
 @app.route('/catraca/validar', methods=['POST'])
 def validar_acesso():
     dados = request.get_json()
-    cpf_inserido = dados.get("cpf")
     cpf_bruto = dados.get("cpf", "")
-    # Garante que estamos tratando apenas números
+    # Limpa o CPF para garantir que a busca seja apenas por números
     cpf_inserido = "".join(filter(str.isdigit, str(cpf_bruto)))
 
     if not cpf_inserido:
         return jsonify({"error": "CPF é obrigatório."}), 400
 
-    # Busca no Firestore
     docs = db.collection('usuarios_catraca').where("cpf", "==", cpf_inserido).limit(1).get()
 
-    if not docs:
-    if len(docs) == 0: # Forma mais segura de verificar se existe
+    if len(docs) == 0:
         return jsonify({"status": "negado", "mensagem": "CPF não cadastrado"}), 404
 
     usuario = docs[0].to_dict()
@@ -80,22 +76,69 @@ def validar_acesso():
             "mensagem": "Procure a secretaria da academia"
         }), 403
 
+# --- ROTAS DE GERENCIAMENTO DE USUÁRIOS ---
+
+@app.route("/usuarios", methods=["GET"])
+@token_obrigatorio
+def listar_usuarios():
+    try:
+        usuarios = []
+        docs = db.collection('usuarios_catraca').get()
+        for doc in docs:
+            dados = doc.to_dict()
+            dados['id'] = doc.id  # Inclui o ID do Firebase para facilitar DELETE/PUT no front
+            usuarios.append(dados)
+        return jsonify(usuarios), 200
+    except Exception as e:
+        return jsonify({"error": "Erro ao listar usuários."}), 500
+
 @app.route("/usuarios", methods=["POST"])
 @token_obrigatorio
 def post_usuario():
     dados = request.get_json()
     if not dados or "nome" not in dados or "cpf" not in dados or "ativo" not in dados:
-        return jsonify({"error": "Dados inválidos. 'nome', 'cpf' e 'ativo' (bool) são obrigatórios."}), 400
+        return jsonify({"error": "Dados inválidos."}), 400
 
     try:
+        # Limpa o CPF antes de salvar
+        cpf_limpo = "".join(filter(str.isdigit, str(dados["cpf"])))
         db.collection('usuarios_catraca').add({
             "nome": dados["nome"],
-            "cpf": dados["cpf"],
+            "cpf": cpf_limpo,
             "ativo": dados["ativo"]
         })
-        return jsonify({"message": "Usuário cadastrado com sucesso!."}), 201
+        return jsonify({"message": "Usuário cadastrado com sucesso!"}), 201
     except Exception as e:
         return jsonify({"error": "Falha no cadastro."}), 400
+
+@app.route("/usuarios/<id>", methods=["PUT"])
+@token_obrigatorio
+def alterar_usuario(id):
+    dados = request.get_json()
+    try:
+        doc_ref = db.collection('usuarios_catraca').document(id)
+        if not doc_ref.get().exists:
+            return jsonify({"error": "Usuário não encontrado."}), 404
+        
+        doc_ref.update(dados)
+        return jsonify({"message": "Usuário atualizado com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"error": "Erro ao atualizar usuário."}), 400
+
+@app.route("/usuarios/<id>", methods=["DELETE"])
+@token_obrigatorio
+def deletar_usuario(id):
+    try:
+        doc_ref = db.collection('usuarios_catraca').document(id)
+        if not doc_ref.get().exists:
+            return jsonify({"error": "Usuário não encontrado."}), 404
+            
+        doc_ref.delete()
+        return jsonify({"message": "Usuário removido com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"error": "Erro ao deletar usuário."}), 400
+
+# --- TRATAMENTO DE ERROS ---
 
 @app.errorhandler(404)
 def not_found(error):
